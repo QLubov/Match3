@@ -41,6 +41,7 @@ public class GameManager : MonoBehaviour
     MatchThree(toRemove);
 
     board.MoveAllDown();
+    board.GenerateNewElements();
     return true;
   }
 

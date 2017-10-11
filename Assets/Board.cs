@@ -11,24 +11,26 @@ public class Board : MonoBehaviour
   public int Width { get; private set; }
   public int Height { get; private set; }
 
+  System.Random r = new System.Random();
+
   public void Generate(int width, int height)
   {
     Width = width;
     Height = height;
-    System.Random r = new System.Random();
+    
     for (int i = 0; i < Width; ++i)
     {
       for (int j = 0; j < Height; ++j)
       {
         var obj = GameObject.Instantiate(ReferenceCell);
         Image img = obj.transform.GetChild(0).gameObject.GetComponent<Image>();
-        int rand = r.Next(colors.Count - 1);
-        img.color = colors[rand];
-        obj.transform.SetParent(gameObject.transform);
-        BoardField e = obj.transform.GetChild(0).gameObject.GetComponent<BoardField>();
+        BoardField e = img.GetComponent<BoardField>();
         e.X = i;
         e.Y = j;
-        e.ID = rand;
+        e.ID = GetRandomColor();
+        img.color = colors[e.ID];
+        obj.transform.SetParent(gameObject.transform);
+       
       }
     }
   }
@@ -182,12 +184,39 @@ public class Board : MonoBehaviour
       }
     }
   }
+
   public bool IsNeighbours(GameObject first, GameObject second)
   {
     var e1 = first.GetComponent<BoardField>();
     var e2 = second.GetComponent<BoardField>();
 
     return (Math.Abs(e1.X - e2.X) < 2 && (e1.Y == e2.Y)) || (Math.Abs(e1.Y - e2.Y) < 2 && (e1.X == e2.X));
+  }
+
+  int GetRandomColor()
+  {    
+    int rand = r.Next(colors.Count - 1);
+    return rand;
+  }
+
+  public void GenerateNewElements()
+  {
+    for (int i = 0; i < Width; ++i)
+    {
+      for (int j = 0; j < Height; ++j)
+      {
+        if (GetElement(i, j) == null)
+        {
+          var img = GameObject.Instantiate(ReferenceCell.transform.GetChild(0).gameObject).GetComponent<Image>();
+          img.transform.SetParent(GetCell(i, j).transform);
+          BoardField e = img.GetComponent<BoardField>();
+          e.X = i;
+          e.Y = j;
+          e.ID = GetRandomColor();
+          img.color = colors[e.ID];
+        }
+      }
+    }
   }
 
 }
