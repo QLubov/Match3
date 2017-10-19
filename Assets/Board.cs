@@ -125,8 +125,13 @@ public class Board : MonoBehaviour
 
   public void RemoveElement(GameObject go)
   {
-    go.transform.SetParent(null);
-    Destroy(go);
+    //go.transform.SetParent(null);
+    RemoveObject(go);
+  }
+
+  void RemoveObject(GameObject go)
+  {
+    go.GetComponent<Animator>().SetBool("IsDestroyed", true);
   }
 
   GameObject GetCell(int i, int j)
@@ -174,11 +179,26 @@ public class Board : MonoBehaviour
           int k = i;
           foreach (var obj in objects)
           {
-            obj.transform.SetParent(GetCell(k, j).transform);
+            var oldParent = obj.transform.parent;
+            var currParent = GetCell(k, j).transform;
+            obj.transform.SetParent(currParent);
             var ge = obj.GetComponent<BoardField>();
             ge.X = k;
             ge.Y = j;
             k--;
+
+            /*var animator = obj.GetComponent<Animator>();
+            AnimationClip[] animationClips = animator.runtimeAnimatorController.animationClips;
+            foreach (var clip in animationClips)
+            {
+              if (clip.name == "moving_state")
+              {
+                var startpos = Math.Abs(oldParent.GetComponent<RectTransform>().anchoredPosition.y - currParent.GetComponent<RectTransform>().anchoredPosition.y);
+                AnimationCurve curve = AnimationCurve.Linear(0.0F, startpos, 1.3F, -35.0f);
+                clip.SetCurve("", typeof(RectTransform), "anchoredPosition.y", curve);
+              }
+            }
+            obj.GetComponent<Animator>().SetTrigger("IsMoved");*/
           }
         }
       }
@@ -214,6 +234,7 @@ public class Board : MonoBehaviour
           e.Y = j;
           e.ID = GetRandomColor();
           img.color = colors[e.ID];
+          img.GetComponent<Animator>().SetTrigger("IsMoved");
         }
       }
     }

@@ -39,10 +39,14 @@ public class GameManager : MonoBehaviour
       return false;
     }
     MatchThree(toRemove);
+       
+    return true;
+  }
 
+  public void MoveAllDown()
+  {
     board.MoveAllDown();
     board.GenerateNewElements();
-    return true;
   }
 
   void MatchThree(List<GameObject> toRemove)
