@@ -42,14 +42,12 @@ public class Board : MonoBehaviour
       return cell.GetChild(0).gameObject;
     return null;
   }
- 
-  //public void SetElement(GameObject o, int i, int j);
 
   public void SwapElements(GameObject first, GameObject second)
   {
     Transform temp = first.transform.parent;
     first.transform.SetParent(second.transform.parent);
-    second.transform.SetParent(temp);
+    second.transform.SetParent(temp);    
     SwapIndexes(first, second);
   }
 
@@ -125,13 +123,13 @@ public class Board : MonoBehaviour
 
   public void RemoveElement(GameObject go)
   {
-    //go.transform.SetParent(null);
     RemoveObject(go);
   }
 
   void RemoveObject(GameObject go)
   {
     go.GetComponent<Animator>().SetBool("IsDestroyed", true);
+    go.transform.SetParent(GameObject.Find("Canvas").transform);
   }
 
   GameObject GetCell(int i, int j)
@@ -179,27 +177,15 @@ public class Board : MonoBehaviour
           int k = i;
           foreach (var obj in objects)
           {
-            var oldParent = obj.transform.parent;
-            var currParent = GetCell(k, j).transform;
-            obj.transform.SetParent(currParent);
+            //obj.transform.SetParent(GetCell(k, j).transform);
+            obj.GetComponent<Moving>().SetTarget(GetCell(k, j).transform);
             var ge = obj.GetComponent<BoardField>();
             ge.X = k;
             ge.Y = j;
             k--;
-
-            /*var animator = obj.GetComponent<Animator>();
-            AnimationClip[] animationClips = animator.runtimeAnimatorController.animationClips;
-            foreach (var clip in animationClips)
-            {
-              if (clip.name == "moving_state")
-              {
-                var startpos = Math.Abs(oldParent.GetComponent<RectTransform>().anchoredPosition.y - currParent.GetComponent<RectTransform>().anchoredPosition.y);
-                AnimationCurve curve = AnimationCurve.Linear(0.0F, startpos, 1.3F, -35.0f);
-                clip.SetCurve("", typeof(RectTransform), "anchoredPosition.y", curve);
-              }
-            }
-            obj.GetComponent<Animator>().SetTrigger("IsMoved");*/
           }
+          j++;
+          break;
         }
       }
     }
@@ -228,16 +214,48 @@ public class Board : MonoBehaviour
         if (GetElement(i, j) == null)
         {
           var img = GameObject.Instantiate(ReferenceCell.transform.GetChild(0).gameObject).GetComponent<Image>();
+          //img.GetComponent<Moving>().SetTarget(GetCell(i, j).transform);
           img.transform.SetParent(GetCell(i, j).transform);
           BoardField e = img.GetComponent<BoardField>();
           e.X = i;
           e.Y = j;
           e.ID = GetRandomColor();
           img.color = colors[e.ID];
-          img.GetComponent<Animator>().SetTrigger("IsMoved");
+          //img.transform.SetParent(GetCell(i, j).transform);
         }
       }
     }
   }
 
+  void SetParent(GameObject obj, Transform newParent)
+  {
+    Debug.Log("SetParent!");
+    StartCoroutine(SetParentCorutine(obj, newParent));
+  }
+
+  IEnumerator SetParentCorutine(GameObject obj, Transform newParent)
+  {
+    var oldParent = obj.transform.parent;
+    //var root = oldParent.transform.parent;
+    //obj.transform.SetParent(root);
+    if (oldParent == null) // just generated object
+    {
+      //obj.GetComponent<Moving>().startPos = new Vector3(newParent.position.x, 650, newParent.position.z);
+      //obj.GetComponent<Moving>().endPos = newParent.position;
+    }
+    else
+    {
+     // obj.GetComponent<Moving>().startPos = oldParent.position;
+     // obj.GetComponent<Moving>().endPos = newParent.position;
+      //obj.GetComponent<Moving>().startPos = newParent.worldToLocalMatrix.MultiplyVector(oldParent.TransformVector(oldParent.position));
+      //obj.GetComponent<Moving>().endPos = newParent.worldToLocalMatrix.MultiplyVector(newParent.TransformVector(newParent.position));
+    }
+
+    obj.GetComponent<Animator>().SetTrigger("IsMoved");
+    
+    //Func<bool> comparer = delegate() { return obj.GetComponent<Moving>().IsAnimEnded; };
+    yield return new WaitUntil(()=> { return (obj.transform.position - newParent.position).magnitude < 1.0f; });
+    //yield return new WaitForEndOfFrame();
+    obj.transform.SetParent(newParent);
+  }
 }

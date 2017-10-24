@@ -46,6 +46,18 @@ public class GameManager : MonoBehaviour
   public void MoveAllDown()
   {
     board.MoveAllDown();
+    //StartCoroutine(GenerateNewCorutine());
+    board.GenerateNewElements();
+  }
+
+  IEnumerator GenerateNewCorutine()
+  {
+    yield return new WaitWhile(() =>
+    {
+
+      var canvas = GameObject.Find("Canvas");
+      return canvas.transform.FindChild("Image") != null;
+    });
     board.GenerateNewElements();
   }
 
