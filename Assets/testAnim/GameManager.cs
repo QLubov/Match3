@@ -1,8 +1,9 @@
 ﻿using System.Collections;
 
-using System.Linq;
+using System.Threading;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 
 public class GameManager : MonoBehaviour
@@ -11,157 +12,100 @@ public class GameManager : MonoBehaviour
   public int Height = 8;
   public Board board;
 
-  void Start()
+  public void Start()
   {
-    Generate();
+    StartCoroutine(GenerateCoroutine());
   }
 
-  void Generate()
-  {
+  IEnumerator GenerateCoroutine()
+  {    
     board.Generate(Width, Height);
-    StartCoroutine(WaitForMovingDown());
+    yield return StartCoroutine(MoveAllDown());
+    Debug.Log("GenerateCoroutine ended!");
+    //check IsGamePlayable
+    //check MatchThree and destroy it
   }
 
-  IEnumerator WaitForMovingDown()
+  IEnumerator MoveAllDown()
   {
-    yield return new WaitWhile(() => { return board.HasElementWithStatus(ElementState.MoveDown); });
-    if (board.HasEmptyCell())
-      Generate();
-    if (board.HasMatchThree())
-      StartCoroutine(MatchThree());
+    List<Coroutine> cors = new List<Coroutine>();
+    for (int i = 0; i < Width; ++i)
+    {
+      for (int j = 0; j < Height; ++j)
+      {
+        var go = board.GetElement(i, j);
+        if (go != null)
+          cors.Add(StartCoroutine(Move(go, go.transform.parent.position)));
+      }
+    }
+    foreach (var c in cors)
+      yield return c;
+  }
+
+  IEnumerator Move(GameObject go, Vector3 target, float speed = 6.0f)
+  {
+    go.GetComponent<LayoutElement>().ignoreLayout = true;
+    var direction = (target - go.transform.position);
+    while (direction.magnitude >= speed)
+    {
+      go.transform.position += speed * direction.normalized;
+      direction = (target - go.transform.position);
+      yield return new WaitForFixedUpdate();
+    }
+    go.transform.position = target;
+    go.GetComponent<LayoutElement>().ignoreLayout = false;
+  }
+
+  public IEnumerator DoGameStep(GameObject first, GameObject second)
+  {
+    //add if for moving availability (item is locked (frozen))
+    if (!board.IsNeighbours(first, second))
+    {
+      //set focused state for second object and change it for first      
+      second.GetComponent<Animator>().SetBool("Focused", true);
+      yield break;
+    }
+
+    yield return StartCoroutine(Swap(first, second));
+    var toRemove = board.GetMatchThreeElements(first);
+
+    toRemove.AddRange(board.GetMatchThreeElements(second));
+    if (toRemove.Count == 0)
+    {
+      yield return StartCoroutine(Swap(first, second));
+      yield break;
+    }
     else
-      StartCoroutine(WaitForInput());
-  }
-
-  IEnumerator WaitForInput()
-  {
-    yield return new WaitWhile(() => { return !Controller.HasReadyElements(); });
-    var objs = Controller.GetReadyElements();
-    StartCoroutine(Swap(objs[0], objs[1]));
-  }
-
-  IEnumerator WaitForDestroying()
-  {
-    yield return new WaitWhile(() => { return board.HasElementWithStatus(ElementState.Destroying); });
-    StartCoroutine(WaitForMovingDown());
-  }
-
-  IEnumerator MatchThree()
-  {
-    board.MatchThree();
-    yield return StartCoroutine(WaitForDestroying());
-    if (IsGamePlayable())
-      StartCoroutine(WaitForInput());
-    //TODO: REgenerate board
-  }
-
-  bool IsGamePlayable()
-  {
-    return true;
+    {
+      while (toRemove.Count != 0)
+      {
+        yield return StartCoroutine(RemoveElements(toRemove));
+        board.RemoveHoles();
+        yield return StartCoroutine(MoveAllDown());
+        toRemove = board.GetMatchThreeElements();
+      }
+    }
+    Debug.Log("Start GenerateCoroutine!");
+    StartCoroutine(GenerateCoroutine());
   }
 
   IEnumerator Swap(GameObject first, GameObject second)
   {
+    StartCoroutine(Move(first, second.transform.parent.position, 4.0f));
+    yield return StartCoroutine(Move(second, first.transform.parent.position, 4.0f));
+
     board.SwapElements(first, second);
-    var toRemove1 = board.GetMatchThreeElements(first);
-    var toRemove2 = board.GetMatchThreeElements(second);
-    board.SwapElements(first, second);
-    if (toRemove1.Count == 0 && toRemove2.Count == 0)
-    {
-      //set SWAP + SWAP_BACK status for both objects
-      first.GetComponent<Controller>().SetState(ElementState.SwapSwapBack);
-      second.GetComponent<Controller>().SetState(ElementState.SwapSwapBack);
-      first.GetComponent<Moving>().SetTarget(second.transform.parent, true);
-      second.GetComponent<Moving>().SetTarget(first.transform.parent, true);
-
-      StartCoroutine(WaitForInput());
-      yield break;
-    }
-    //set swap for both
-    first.GetComponent<Controller>().SetState(ElementState.Swapped);
-    second.GetComponent<Controller>().SetState(ElementState.Swapped);
-    first.GetComponent<Moving>().SetTarget(second.transform.parent);
-    second.GetComponent<Moving>().SetTarget(first.transform.parent);
-    yield return new WaitWhile(() => {return board.HasElementWithStatus(ElementState.Swapped); });
-    //probably need to wait swap animation is ended
-    if (toRemove1.Count != 0)
-    {
-      Controller.SetStateForObjects(toRemove1, ElementState.Destroying);
-    }
-    /*else
-    {
-      //set DESTROYING to first
-    }*/
-    if (toRemove2.Count != 0)
-    {
-      Controller.SetStateForObjects(toRemove2, ElementState.Destroying);
-    }
-    /*else
-    {
-      
-    }*/
-
-    StartCoroutine(WaitForDestroying());
   }
 
-  bool HasMatchThree()
-  {
-    return false;
-  }
-
-  /*public bool MoveElements(GameObject element, GameObject other)
-  {
-    //extract to separate func, which
-    //checks behaviour availability also
-    //(e.x. frozen element)
-
-    if (!board.IsNeighbours(element, other))
-    {
-      return false;
-    }
-
-    board.SwapElements(element, other);
-    //play animation
-    var toRemove = new List<GameObject>();
-    toRemove.AddRange(board.GetMatchThreeElements(element));
-    toRemove.AddRange(board.GetMatchThreeElements(other));
-    if (toRemove.Count == 0)
-    {
-      board.SwapElements(element, other);
-      //play animation?
-      return false;
-    }
-    MatchThree(toRemove);
-       
-    return true;
-  }
-
-  public void MoveAllDown()
-  {
-    board.MoveAllDown();
-    //StartCoroutine(GenerateNewCorutine());
-    board.GenerateNewElements();
-  }
-
-  IEnumerator GenerateNewCorutine()
-  {
-    yield return new WaitWhile(() =>
-    {
-
-      var canvas = GameObject.Find("Canvas");
-      return canvas.transform.FindChild("Image") != null;
-    });
-    board.GenerateNewElements();
-  }
-
-  void MatchThree(List<GameObject> toRemove)
+  IEnumerator RemoveElements(List<GameObject> toRemove)
   {
     foreach (var go in toRemove)
     {
-      //TODO:
-      //call behaviour.Exec() to add new elements to toRemove
-      //call View.Exec() to play anim, etc.
-      board.RemoveElement(go);
+      if (go != null)
+        go.GetComponent<Animator>().SetBool("Destroyed", true);
     }
-  } */
+
+    yield return new WaitWhile(() => { return board.HasElementWithStatus("Destroyed", true); });
+    //yield break;
+  }
 }

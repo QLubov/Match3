@@ -34,9 +34,10 @@ public class Board : MonoBehaviour
         img.color = colors[e.ID];
 
         var cell = GetCell(i, j);
-        item.transform.position = cell.transform.position + new Vector3(0, 650, 0); //magic number
-        item.GetComponent<Moving>().SetTarget(cell.transform);
-        item.GetComponent<Controller>().SetState(ElementState.MoveDown);
+        //item.transform.position = cell.transform.position + new Vector3(0, 650, 0); //magic number
+
+        item.transform.position = GetCell(0, j).transform.position + new Vector3(0, 100, 0); 
+        item.transform.SetParent(cell.transform);
       }
     }
   }
@@ -69,7 +70,7 @@ public class Board : MonoBehaviour
     return null;
   }
 
-  public bool HasElementWithStatus(ElementState state)
+  public bool HasElementWithStatus(String name, bool val)
   {
     for (int i = 0; i < Width; ++i)
     {
@@ -78,10 +79,12 @@ public class Board : MonoBehaviour
         var ctrl = GetElement(i, j);
         if (ctrl == null)
           continue;
-        if (ctrl.GetComponent<Controller>().GetState() == state)
+        if (ctrl.GetComponent<Animator>().GetBool(name) == val)
+        {          
           return true;
+        }
       }
-    }
+    }   
     return false;
   }
 
@@ -101,15 +104,29 @@ public class Board : MonoBehaviour
 
   public bool HasMatchThree()
   {
-    return false;
+    return GetMatchThreeElements().Count != 0;
   }
 
-  public void MatchThree()
+  public List<GameObject> GetMatchThreeElements()
   {
+    var res = new List<GameObject>();
 
+    for (int i = 0; i < Width; ++i)
+    {
+      for (int j = 0; j < Height; ++j)
+      {
+        var go = GetElement(i, j);
+        if (go == null)
+          continue;
+        if (res.Contains(go))
+          continue;
+        res.AddRange(GetMatchThreeElements(go));
+      }
+    }
+    return res;
   }
 
-  public List<GameObject> GetElementWithStatus(ElementState state)
+  /*public List<GameObject> GetElementWithStatus(ElementState state)
   {
     var res = new List<GameObject>();
 
@@ -123,7 +140,7 @@ public class Board : MonoBehaviour
       }
     }
     return res;
-  }
+  }*/
 
   public void SwapElements(GameObject first, GameObject second)
   {
@@ -219,67 +236,68 @@ public class Board : MonoBehaviour
     return gameObject.transform.GetChild(i * Width + j).gameObject.transform.gameObject;
   }
 
-   void SwapIndexes(GameObject element, GameObject other)
-   {
-     var e1 = element.GetComponent<BoardField>();
-     var e2 = other.GetComponent<BoardField>();
-     int tX = e1.X;
-     int tY = e1.Y;
+  void SwapIndexes(GameObject element, GameObject other)
+  {
+    var e1 = element.GetComponent<BoardField>();
+    var e2 = other.GetComponent<BoardField>();
+    int tX = e1.X;
+    int tY = e1.Y;
 
-     e1.X = e2.X;
-     e1.Y = e2.Y;
-     e2.X = tX;
-     e2.Y = tY;
-   }
-  /*
-   List<GameObject> GetAbove(int row, int col)
-   {
-     var result = new List<GameObject>();
-     for (int i = row; i >= 0; --i)
-     {
-       var go = GetElement(i, col);
-       if (go != null)
-         result.Add(go);
-     }
-     return result;
-   }
+    e1.X = e2.X;
+    e1.Y = e2.Y;
+    e2.X = tX;
+    e2.Y = tY;
+  }
 
-   public void MoveAllDown()
-   {
-     for (int j = 0; j < Width; ++j)
-     {
-       for (int i = Height - 1; i >= 0; --i)
-       {
-         var go = GetElement(i, j);
-         if (go == null)
-         {
-           var objects = GetAbove(i, j);
-           if (objects.Count == 0)
-             break;
-           int k = i;
-           foreach (var obj in objects)
-           {
-             //obj.transform.SetParent(GetCell(k, j).transform);
-             obj.GetComponent<Moving>().SetTarget(GetCell(k, j).transform);
-             var ge = obj.GetComponent<BoardField>();
-             ge.X = k;
-             ge.Y = j;
-             k--;
-           }
-           j++;
-           break;
-         }
-       }
-     }
-   }
-*/
-   public bool IsNeighbours(GameObject first, GameObject second)
-   {
-     var e1 = first.GetComponent<BoardField>();
-     var e2 = second.GetComponent<BoardField>();
+  List<GameObject> GetAbove(int row, int col)
+  {
+    var result = new List<GameObject>();
+    for (int i = row; i >= 0; --i)
+    {
+      var go = GetElement(i, col);
+      if (go != null)
+        result.Add(go);
+    }
+    return result;
+  }
 
-     return (Math.Abs(e1.X - e2.X) < 2 && (e1.Y == e2.Y)) || (Math.Abs(e1.Y - e2.Y) < 2 && (e1.X == e2.X));
-   }
+  public void RemoveHoles()
+  {
+    for (int j = 0; j < Width; ++j)
+    {
+      for (int i = Height - 1; i >= 0; --i)
+      {
+        var go = GetElement(i, j);
+        if (go == null)
+        {
+          var objects = GetAbove(i, j);
+          if (objects.Count == 0)
+            break;
+          int k = i;
+          foreach (var obj in objects)
+          {
+            //Debug.Log(string.Format("I'm empty!! {0}:{1} ", i, j));
+            obj.GetComponent<LayoutElement>().ignoreLayout = true;
+            obj.transform.SetParent(GetCell(k, j).transform);
+            var ge = obj.GetComponent<BoardField>();
+            ge.X = k;
+            ge.Y = j;
+            k--;
+          }
+          //j++;
+          break;
+        }
+      }
+    }
+  }
+
+  public bool IsNeighbours(GameObject first, GameObject second)
+  {
+    var e1 = first.GetComponent<BoardField>();
+    var e2 = second.GetComponent<BoardField>();
+
+    return (Math.Abs(e1.X - e2.X) < 2 && (e1.Y == e2.Y)) || (Math.Abs(e1.Y - e2.Y) < 2 && (e1.X == e2.X));
+  }
 
   int GetRandomColor()
   {
