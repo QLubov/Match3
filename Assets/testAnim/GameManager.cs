@@ -21,9 +21,25 @@ public class GameManager : MonoBehaviour
   {    
     board.Generate(Width, Height);
     yield return StartCoroutine(MoveAllDown());
-    Debug.Log("GenerateCoroutine ended!");
-    //check IsGamePlayable
-    //check MatchThree and destroy it
+        
+    var toRemove = board.GetMatchThreeElements();
+    while (toRemove.Count != 0)
+    {
+      yield return StartCoroutine(RemoveElements(toRemove));
+      board.RemoveHoles();
+      yield return StartCoroutine(MoveAllDown());
+      toRemove = board.GetMatchThreeElements();
+    }
+    if (board.HasEmptyCell())
+    {
+      yield return StartCoroutine(GenerateCoroutine());
+    }
+
+    if (board.GetCombination().Count == 0)
+    {
+      board.Clear();
+      yield return StartCoroutine(GenerateCoroutine());
+    }
   }
 
   IEnumerator MoveAllDown()
@@ -48,6 +64,8 @@ public class GameManager : MonoBehaviour
     var direction = (target - go.transform.position);
     while (direction.magnitude >= speed)
     {
+      if (go == null)
+        yield break;
       go.transform.position += speed * direction.normalized;
       direction = (target - go.transform.position);
       yield return new WaitForFixedUpdate();
@@ -75,7 +93,7 @@ public class GameManager : MonoBehaviour
       yield return StartCoroutine(Swap(first, second));
       yield break;
     }
-    else
+    /*else
     {
       while (toRemove.Count != 0)
       {
@@ -84,8 +102,7 @@ public class GameManager : MonoBehaviour
         yield return StartCoroutine(MoveAllDown());
         toRemove = board.GetMatchThreeElements();
       }
-    }
-    Debug.Log("Start GenerateCoroutine!");
+    }*/
     StartCoroutine(GenerateCoroutine());
   }
 

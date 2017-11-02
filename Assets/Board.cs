@@ -27,6 +27,7 @@ public class Board : MonoBehaviour
 
         var item = GameObject.Instantiate(ReferenceItem);
         Image img = item.GetComponent<Image>();
+        item.SetActive(true);
         BoardField e = img.GetComponent<BoardField>();
         e.X = i;
         e.Y = j;
@@ -34,34 +35,13 @@ public class Board : MonoBehaviour
         img.color = colors[e.ID];
 
         var cell = GetCell(i, j);
-        //item.transform.position = cell.transform.position + new Vector3(0, 650, 0); //magic number
-
+        //calculate start position for new elements instead of "100"
         item.transform.position = GetCell(0, j).transform.position + new Vector3(0, 100, 0); 
         item.transform.SetParent(cell.transform);
       }
     }
   }
-
-  /*public List<GameObject> GetSwappedObjects()
-  {
-    var res = new List<GameObject>();
-
-    for (int i = 0; i < Width; ++i)
-    {
-      for (int j = 0; j < Height; ++j)
-      {
-        var go = GetElement(i, j);
-        if (go == null)
-          continue;
-        if (go.GetComponent<Animator>().GetBool("IsSwap") == true)
-        {
-          res.Add(go);
-        }
-      }
-    }
-    return res;
-  }*/
-
+  
   public GameObject GetElement(int i, int j)
   {
     var cell = GetCell(i, j).transform;
@@ -125,23 +105,7 @@ public class Board : MonoBehaviour
     }
     return res;
   }
-
-  /*public List<GameObject> GetElementWithStatus(ElementState state)
-  {
-    var res = new List<GameObject>();
-
-    for (int i = 0; i < Width; ++i)
-    {
-      for (int j = 0; j < Height; ++j)
-      {
-        var ctrl = GetElement(i, j).GetComponent<Controller>();
-        if (ctrl.GetState() == state)
-          res.Add(ctrl.gameObject);
-      }
-    }
-    return res;
-  }*/
-
+    
   public void SwapElements(GameObject first, GameObject second)
   {
     Transform temp = first.transform.parent;
@@ -219,18 +183,7 @@ public class Board : MonoBehaviour
     }
     return true;
   }
-
-  /*public void RemoveElement(GameObject go)
-  {
-    RemoveObject(go);
-  }
-
-  void RemoveObject(GameObject go)
-  {
-    go.GetComponent<Animator>().SetBool("IsDestroyed", true);
-    go.transform.SetParent(GameObject.Find("Canvas").transform);
-  }
-  */
+   
   GameObject GetCell(int i, int j)
   {
     return gameObject.transform.GetChild(i * Width + j).gameObject.transform.gameObject;
@@ -275,16 +228,14 @@ public class Board : MonoBehaviour
             break;
           int k = i;
           foreach (var obj in objects)
-          {
-            //Debug.Log(string.Format("I'm empty!! {0}:{1} ", i, j));
+          {            
             obj.GetComponent<LayoutElement>().ignoreLayout = true;
             obj.transform.SetParent(GetCell(k, j).transform);
             var ge = obj.GetComponent<BoardField>();
             ge.X = k;
             ge.Y = j;
             k--;
-          }
-          //j++;
+          }          
           break;
         }
       }
@@ -301,61 +252,56 @@ public class Board : MonoBehaviour
 
   int GetRandomColor()
   {
-    int rand = r.Next(colors.Count - 1);
-    return rand;
+    return UnityEngine.Random.Range(0, colors.Count);
   }
-  /*
-  public void GenerateNewElements()
+
+  bool CheckStep(GameObject first, GameObject second)
+  {
+    SwapElements(first, second);
+    var list = GetMatchThreeElements(first);
+    list.AddRange(GetMatchThreeElements(second));
+    SwapElements(first, second);
+    if (list.Count != 0)
+    {      
+      return true;
+    }
+    return false;
+  }
+
+  public List<GameObject> GetCombination()
+  {
+    var res = new List<GameObject>();
+    for (int i = 0; i < Width - 1; ++i)
+    {
+      for (int j = 0; j < Height - 1; ++j)
+      {
+        if (CheckStep(GetElement(i, j), GetElement(i + 1, j)))
+        {
+          res.Add(GetElement(i, j));
+          res.Add(GetElement(i + 1, j));
+          return res;
+        }
+        if (CheckStep(GetElement(i, j), GetElement(i, j + 1)))
+        {
+          res.Add(GetElement(i, j));
+          res.Add(GetElement(i, j + 1));
+          return res;
+        }
+      }
+    }
+    return res;
+  }
+
+  public void Clear()
   {
     for (int i = 0; i < Width; ++i)
     {
       for (int j = 0; j < Height; ++j)
       {
-        if (GetElement(i, j) == null)
-        {
-          var img = GameObject.Instantiate(ReferenceCell.transform.GetChild(0).gameObject).GetComponent<Image>();
-          //img.GetComponent<Moving>().SetTarget(GetCell(i, j).transform);
-          img.transform.SetParent(GetCell(i, j).transform);
-          BoardField e = img.GetComponent<BoardField>();
-          e.X = i;
-          e.Y = j;
-          e.ID = GetRandomColor();
-          img.color = colors[e.ID];
-          //img.transform.SetParent(GetCell(i, j).transform);
-        }
+        var go = GetElement(i, j);
+        if (go != null)
+          Destroy(go);
       }
     }
   }
-
-  void SetParent(GameObject obj, Transform newParent)
-  {
-    Debug.Log("SetParent!");
-    StartCoroutine(SetParentCorutine(obj, newParent));
-  }
-
-  IEnumerator SetParentCorutine(GameObject obj, Transform newParent)
-  {
-    var oldParent = obj.transform.parent;
-    //var root = oldParent.transform.parent;
-    //obj.transform.SetParent(root);
-    if (oldParent == null) // just generated object
-    {
-      //obj.GetComponent<Moving>().startPos = new Vector3(newParent.position.x, 650, newParent.position.z);
-      //obj.GetComponent<Moving>().endPos = newParent.position;
-    }
-    else
-    {
-      // obj.GetComponent<Moving>().startPos = oldParent.position;
-      // obj.GetComponent<Moving>().endPos = newParent.position;
-      //obj.GetComponent<Moving>().startPos = newParent.worldToLocalMatrix.MultiplyVector(oldParent.TransformVector(oldParent.position));
-      //obj.GetComponent<Moving>().endPos = newParent.worldToLocalMatrix.MultiplyVector(newParent.TransformVector(newParent.position));
-    }
-
-    obj.GetComponent<Animator>().SetTrigger("IsMoved");
-
-    //Func<bool> comparer = delegate() { return obj.GetComponent<Moving>().IsAnimEnded; };
-    yield return new WaitUntil(() => { return (obj.transform.position - newParent.position).magnitude < 1.0f; });
-    //yield return new WaitForEndOfFrame();
-    obj.transform.SetParent(newParent);
-  }*/
 }
