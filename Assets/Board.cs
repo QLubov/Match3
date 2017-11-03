@@ -11,8 +11,6 @@ public class Board : MonoBehaviour
   public int Width { get; private set; }
   public int Height { get; private set; }
 
-  System.Random r = new System.Random();
-
   public void Generate(int width, int height)
   {
     Width = width;
@@ -36,17 +34,19 @@ public class Board : MonoBehaviour
 
         var cell = GetCell(i, j);
         //calculate start position for new elements instead of "100"
-        item.transform.position = GetCell(0, j).transform.position + new Vector3(0, 100, 0); 
+        item.transform.position = GetCell(0, j).transform.position + new Vector3(0, 100, 0);
         item.transform.SetParent(cell.transform);
       }
     }
   }
-  
+
   public GameObject GetElement(int i, int j)
   {
-    var cell = GetCell(i, j).transform;
-    if (cell.childCount > 0)
-      return cell.GetChild(0).gameObject;
+    var cell = GetCell(i, j);
+    if (cell == null)
+      return null;
+    if (cell.transform.childCount > 0)
+      return cell.transform.GetChild(0).gameObject;
     return null;
   }
 
@@ -60,11 +60,11 @@ public class Board : MonoBehaviour
         if (ctrl == null)
           continue;
         if (ctrl.GetComponent<Animator>().GetBool(name) == val)
-        {          
+        {
           return true;
         }
       }
-    }   
+    }
     return false;
   }
 
@@ -105,7 +105,7 @@ public class Board : MonoBehaviour
     }
     return res;
   }
-    
+
   public void SwapElements(GameObject first, GameObject second)
   {
     Transform temp = first.transform.parent;
@@ -183,9 +183,11 @@ public class Board : MonoBehaviour
     }
     return true;
   }
-   
+
   GameObject GetCell(int i, int j)
   {
+    if (i < 0 || i >= Width || j < 0 || j >= Height)
+      return null;
     return gameObject.transform.GetChild(i * Width + j).gameObject.transform.gameObject;
   }
 
@@ -228,14 +230,14 @@ public class Board : MonoBehaviour
             break;
           int k = i;
           foreach (var obj in objects)
-          {            
+          {
             obj.GetComponent<LayoutElement>().ignoreLayout = true;
             obj.transform.SetParent(GetCell(k, j).transform);
             var ge = obj.GetComponent<BoardField>();
             ge.X = k;
             ge.Y = j;
             k--;
-          }          
+          }
           break;
         }
       }
@@ -262,7 +264,7 @@ public class Board : MonoBehaviour
     list.AddRange(GetMatchThreeElements(second));
     SwapElements(first, second);
     if (list.Count != 0)
-    {      
+    {
       return true;
     }
     return false;
@@ -303,5 +305,41 @@ public class Board : MonoBehaviour
           Destroy(go);
       }
     }
+  }
+
+  public List<GameObject> GetAround(BoardField bf, int count = 8)
+  {
+    Debug.Log("GetAround started");
+    var res = new List<GameObject>();
+    for (int i = bf.X - 1; i <= bf.X + 1; ++i)
+    {
+      for (int j = bf.Y - 1; j <= bf.Y + 1; ++j)
+      {
+        if (i == bf.X && j == bf.Y)
+          continue;
+        var go = GetElement(i, j);
+        if (go != null && go.GetComponent<Animator>().GetBool("Destroyed") == false)
+          res.Add(go);
+      }
+    }
+    return res;
+  }
+
+  public List<GameObject> GetRandomElements(int count = 8)
+  {
+    var res = new List<GameObject>();
+    for (int i = 0; i < count;)
+    {
+      var x = UnityEngine.Random.Range(0, Width);
+      var y = UnityEngine.Random.Range(0, Height);
+      var element = GetElement(x, y);
+      if (res.Contains(element) || element == null)
+        continue;
+      if (!element.GetComponent<Animator>().GetBool("Destroyed"))
+        res.Add(element);
+      ++i;
+    }
+
+    return res;
   }
 }

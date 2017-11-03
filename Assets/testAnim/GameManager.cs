@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 
-using System.Threading;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
@@ -18,13 +17,14 @@ public class GameManager : MonoBehaviour
   }
 
   IEnumerator GenerateCoroutine()
-  {    
+  {
     board.Generate(Width, Height);
     yield return StartCoroutine(MoveAllDown());
         
     var toRemove = board.GetMatchThreeElements();
     while (toRemove.Count != 0)
     {
+      Debug.Log("MatchThree...");
       yield return StartCoroutine(RemoveElements(toRemove));
       board.RemoveHoles();
       yield return StartCoroutine(MoveAllDown());
@@ -58,7 +58,7 @@ public class GameManager : MonoBehaviour
       yield return c;
   }
 
-  IEnumerator Move(GameObject go, Vector3 target, float speed = 6.0f)
+  public IEnumerator Move(GameObject go, Vector3 target, float speed = 6.0f)
   {
     go.GetComponent<LayoutElement>().ignoreLayout = true;
     var direction = (target - go.transform.position);
@@ -116,10 +116,16 @@ public class GameManager : MonoBehaviour
 
   IEnumerator RemoveElements(List<GameObject> toRemove)
   {
-    foreach (var go in toRemove)
+    for(int i = 0; i < toRemove.Count; ++i)
     {
+      var go = toRemove[i];
       if (go != null)
+      {
+        toRemove.AddRange(go.GetComponent<Feature>().PerformFeature());
+
+        Debug.Log(go.GetComponent<Feature>().fType);
         go.GetComponent<Animator>().SetBool("Destroyed", true);
+      }
     }
 
     yield return new WaitWhile(() => { return board.HasElementWithStatus("Destroyed", true); });
