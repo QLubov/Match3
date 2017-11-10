@@ -34,7 +34,7 @@ public class Controller : MonoBehaviour
       item.Feature.SetFeatureType(FeatureType.Recolor);
       item.Feature.PerformFeature();
       item.Feature.SetFeatureType(FeatureType.None);
-      gameMgr.StartCoroutine(gameMgr.GenerateCoroutine());
+      gameMgr.StartCoroutine(gameMgr.ProcessGame());
       IsRecolorUsed = false;
       return;
     }

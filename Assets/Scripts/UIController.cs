@@ -30,10 +30,10 @@ public class UIController : MonoBehaviour
 
   IEnumerator HighlightPair(List<Item> pair)
   {
-    StartCoroutine(gameMgr.Move(pair[1], pair[0].transform.parent.position));
-    yield return StartCoroutine(gameMgr.Move(pair[0], pair[1].transform.parent.position));
-    StartCoroutine(gameMgr.Move(pair[1], pair[1].transform.parent.position));
-    yield return StartCoroutine(gameMgr.Move(pair[0], pair[0].transform.parent.position));
+    StartCoroutine(gameMgr.Move(pair[1], pair[0].transform.parent.position, gameMgr.SwapSpeed));
+    yield return StartCoroutine(gameMgr.Move(pair[0], pair[1].transform.parent.position, gameMgr.SwapSpeed));
+    StartCoroutine(gameMgr.Move(pair[1], pair[1].transform.parent.position, gameMgr.SwapSpeed));
+    yield return StartCoroutine(gameMgr.Move(pair[0], pair[0].transform.parent.position, gameMgr.SwapSpeed));
   }
 
   public void UseBomb()
@@ -49,7 +49,7 @@ public class UIController : MonoBehaviour
   public void RegenerateBoard()
   {
     gameMgr.board.Clear();
-    gameMgr.StartCoroutine(gameMgr.GenerateCoroutine());
+    gameMgr.StartCoroutine(gameMgr.ProcessGame());
   }
 
   void OnGameEnded()

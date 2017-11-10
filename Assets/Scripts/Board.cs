@@ -33,26 +33,14 @@ public class Board : MonoBehaviour
           continue;
 
         var item = ItemFactory.Instance.Create(i, j);
-        //calculate start position for new elements instead of "100"
+        //TODO: just for beauty :) calculate start position for new elements instead of "100"
         item.transform.position = cells[0, j].transform.position + new Vector3(0, 100, 0);
-        item.transform.SetParent(cells[i, j].transform);
+        cells[i, j].Item = item;
       }
     }
   }
 
-  /*public Item GetElement(int i, int j)
-  {
-    return GetCell(i, j)?.Item;
-  }
-
-  Cell GetCell(int i, int j)
-  {
-    if (i < 0 || i >= Width || j < 0 || j >= Height)
-      return null;
-    return gameObject.transform.GetChild(i * Width + j).GetComponent<Cell>();
-  }*/
-
-  public bool HasElementWithStatus(String name, bool val)
+  public bool HasElementWithStatus(string name, bool val)
   {
     for (int i = 0; i < Width; ++i)
     {
@@ -82,11 +70,6 @@ public class Board : MonoBehaviour
     return false;
   }
 
-  public bool HasMatchThree()
-  {
-    return GetMatchThreeElements().Count != 0;
-  }
-
   public List<Item> GetMatchThreeElements()
   {
     var res = new List<Item>();
@@ -99,7 +82,8 @@ public class Board : MonoBehaviour
           continue;
         if (res.Contains(cells[i, j].Item))
           continue;
-        res.AddRange(GetMatchThreeElements(cells[i, j].Item));
+        if(!res.Contains(cells[i, j].Item)) //carefully check this change
+          res.AddRange(GetMatchThreeElements(cells[i, j].Item));
       }
     }
     return res;
@@ -115,15 +99,13 @@ public class Board : MonoBehaviour
 
   void SwapIndexes(Item element, Item other)
   {
-    var e1 = element.GetComponent<Item>();
-    var e2 = other.GetComponent<Item>();
-    int tX = e1.X;
-    int tY = e1.Y;
+    int tX = element.X;
+    int tY = element.Y;
 
-    e1.X = e2.X;
-    e1.Y = e2.Y;
-    e2.X = tX;
-    e2.Y = tY;
+    element.X = other.X;
+    element.Y = other.Y;
+    other.X = tX;
+    other.Y = tY;
   }
 
   public List<Item> GetMatchThreeElements(Item item)
@@ -138,21 +120,21 @@ public class Board : MonoBehaviour
     return result;
   }
 
-  List<Item> GetElementsFromLine(Item ge)
+  List<Item> GetElementsFromLine(Item item)
   {
     var result = new List<Item>();
 
-    for (int i = ge.X - 1; i >= 0; --i)
+    for (int i = item.X - 1; i >= 0; --i)
     {
-      var go = cells[i, ge.Y].Item;
-      if (!IsSameElements(go, ge))
+      var go = cells[i, item.Y].Item;
+      if (!IsSameElements(go, item))
         break;
       result.Add(go);
     }
-    for (int i = ge.X + 1; i < Width; ++i)
+    for (int i = item.X + 1; i < Width; ++i)
     {
-      var go = cells[i, ge.Y].Item;
-      if (!IsSameElements(go, ge))
+      var go = cells[i, item.Y].Item;
+      if (!IsSameElements(go, item))
         break;
       result.Add(go);
     }
@@ -161,21 +143,21 @@ public class Board : MonoBehaviour
     return result;
   }
 
-  List<Item> GetElemenetsFromColumn(Item ge)
+  List<Item> GetElemenetsFromColumn(Item item)
   {
     var result = new List<Item>();
 
-    for (int i = ge.Y + 1; i < Height; ++i)
+    for (int i = item.Y + 1; i < Height; ++i)
     {
-      var go = cells[ge.X, i].Item;
-      if (!IsSameElements(go, ge))
+      var go = cells[item.X, i].Item;
+      if (!IsSameElements(go, item))
         break;
       result.Add(go);
     }
-    for (int i = ge.Y - 1; i >= 0; --i)
+    for (int i = item.Y - 1; i >= 0; --i)
     {
-      var go = cells[ge.X, i].Item;
-      if (!IsSameElements(go, ge))
+      var go = cells[item.X, i].Item;
+      if (!IsSameElements(go, item))
         break;
       result.Add(go);
     }
@@ -184,11 +166,11 @@ public class Board : MonoBehaviour
     return result;
   }
 
-  bool IsSameElements(Item go, Item ge)
+  bool IsSameElements(Item first, Item second)
   {
-    if (go == null)
+    if (first == null || second == null)
       return false;
-    if (go.ID != ge.ID)
+    if (first.ID != second.ID)
     {
       return false;
     }
@@ -221,11 +203,10 @@ public class Board : MonoBehaviour
           int k = i;
           foreach (var obj in objects)
           {
-            obj.GetComponent<LayoutElement>().ignoreLayout = true;
-            obj.transform.SetParent(cells[k, j].transform);
-            var ge = obj.GetComponent<Item>();
-            ge.X = k;
-            ge.Y = j;
+            obj.LayoutElement.ignoreLayout = true;
+            cells[k, j].Item = obj;
+            obj.X = k;
+            obj.Y = j;
             k--;
           }
           break;
@@ -283,7 +264,7 @@ public class Board : MonoBehaviour
       for (int j = 0; j < Height; ++j)
       {
         if (!cells[i, j].IsEmpty)
-          Destroy(cells[i, j].Item);
+          cells[i, j].Item.RemoveMe();
       }
     }
   }
@@ -325,9 +306,9 @@ public class Board : MonoBehaviour
     return res;
   }
 
-  public void RecolorElements(Item item)
+  public void RecolorElements(Item item, int count = 8)
   {
-    var list = GetRandomElements(7);
+    var list = GetRandomElements(count - 1);
     list.Add(item);
     foreach (var it in list)
     {

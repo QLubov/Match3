@@ -35,15 +35,14 @@ public class ItemFactory : MonoBehaviour
     var item = go.GetComponent<Item>();
     item.X = x;
     item.Y = y;
-    item.Recolor();    
+    item.Recolor();
     return item;   
   }
 
   public void Remove(Item item)
   {
     item.transform.SetParent(transform);
-    ResetComponents(item);
-    item.Feature.Start();
+    ResetComponents(item);    
     item.gameObject.SetActive(false);
   }
 
@@ -51,5 +50,7 @@ public class ItemFactory : MonoBehaviour
   {    
     item.transform.localScale = ItemReference.transform.localScale;
     item.transform.rotation = ItemReference.transform.rotation;
+    item.StopAllCoroutines();
+    item.Feature.Start();
   }
 }

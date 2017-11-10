@@ -4,19 +4,23 @@ using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
 
-
 public class GameManager : MonoBehaviour
 {
   public Board board;
   public Timer timer;
   public float duration;
+  [Range(0.1f, 20.0f)]
+  public float SwapSpeed = 4.0f;
+  [Range(0.1f, 50.0f)]
+  public float MoveSpeed = 6.0f;
   DateTime stamp;
+
   void Start()
   {
-    StartCoroutine(GenerateCoroutine(true));
+    StartCoroutine(ProcessGame(true));
   }
 
-  public IEnumerator GenerateCoroutine(bool resetTimer = false)
+  public IEnumerator ProcessGame(bool resetTimer = false)
   {    
     board.Generate();
     yield return StartCoroutine(MoveAllDown());
@@ -27,7 +31,7 @@ public class GameManager : MonoBehaviour
     if (board.GetCombination().Count == 0)
     {
       board.Clear();
-      yield return StartCoroutine(GenerateCoroutine());
+      yield return StartCoroutine(ProcessGame());
     }
     if (resetTimer == true)
     {
@@ -48,7 +52,7 @@ public class GameManager : MonoBehaviour
     }
     if (board.HasEmptyCell())
     {
-      yield return StartCoroutine(GenerateCoroutine());
+      yield return StartCoroutine(ProcessGame());
     }
   }
 
@@ -60,9 +64,9 @@ public class GameManager : MonoBehaviour
     {
       for (int j = 0; j < board.Height; ++j)
       {
-        var go = board.cells[i, j].Item;
-        if (go != null && (go.transform.position != go.transform.parent.position))
-          cors.Add(StartCoroutine(Move(go, go.transform.parent.position)));
+        var item = board.cells[i, j].Item;
+        if (item != null && (item.transform.position != item.transform.parent.position))
+          cors.Add(StartCoroutine(Move(item, item.transform.parent.position, MoveSpeed)));
       }
     }
     foreach (var c in cors)
@@ -71,14 +75,14 @@ public class GameManager : MonoBehaviour
     Debug.Log(time);
   }
 
-  public IEnumerator Move(Item go, Vector3 target, float speed = 6.0f)
+  public IEnumerator Move(Item go, Vector3 target, float speed)
   {
     go.LayoutElement.ignoreLayout = true;
     var direction = (target - go.transform.position);
     while (direction.magnitude >= speed)
     {
-      if (go == null)
-        yield break;
+      //if (go == null)
+      //  yield break;
       go.transform.position += speed * direction.normalized;
       direction = (target - go.transform.position);
       yield return new WaitForFixedUpdate();
@@ -93,7 +97,7 @@ public class GameManager : MonoBehaviour
     if (!board.IsNeighbours(first, second))
     {
       //set focused state for second object and change it for first      
-      second.GetComponent<Animator>().SetBool("Focused", true);
+      second.Animator.SetBool("Focused", true);
       yield break;
     }
 
@@ -108,24 +112,14 @@ public class GameManager : MonoBehaviour
       yield return StartCoroutine(Swap(first, second));
       yield break;
     }
-    /*else
-    {
-      while (toRemove.Count != 0)
-      {
-        yield return StartCoroutine(RemoveElements(toRemove));
-        board.RemoveHoles();
-        yield return StartCoroutine(MoveAllDown());
-        toRemove = board.GetMatchThreeElements();
-      }
-    }*/
-    
-    StartCoroutine(GenerateCoroutine());
+
+    StartCoroutine(ProcessBoard(toRemove));
   }
 
   IEnumerator Swap(Item first, Item second)
   {
-    StartCoroutine(Move(first, second.transform.parent.position, 4.0f));
-    yield return StartCoroutine(Move(second, first.transform.parent.position, 4.0f));
+    StartCoroutine(Move(first, second.transform.parent.position, SwapSpeed));
+    yield return StartCoroutine(Move(second, first.transform.parent.position, SwapSpeed));
 
     board.SwapElements(first, second);
   }
@@ -134,16 +128,20 @@ public class GameManager : MonoBehaviour
   {
     for (int i = 0; i < toRemove.Count; ++i)
     {
-      var go = toRemove[i];
-      if (go != null)
+      var item = toRemove[i];
+      if (item != null)
       {
-        toRemove.AddRange(go.Feature.PerformFeature());
-                
-        go.GetComponent<Animator>().SetBool("Destroyed", true);
+        toRemove.AddRange(item.Feature.PerformFeature());
+
+        item.Animator.SetBool("Destroyed", true);
       }
     }
 
     yield return new WaitWhile(() => { return board.HasElementWithStatus("Destroyed", true); });
-    //yield break;
+  }
+
+  void OnApplicationQuit()
+  {
+    Application.Quit();
   }
 }

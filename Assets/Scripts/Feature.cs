@@ -17,6 +17,7 @@ public class Feature : MonoBehaviour
 
   public void Start()
   {
+    fType = FeatureType.None;
     if (Random.Range(0, 40) == 1)
     {
       SetFeatureType((FeatureType)Random.Range(0, 3));
@@ -27,6 +28,12 @@ public class Feature : MonoBehaviour
   {
     fType = type;
     GetComponent<Animator>().SetInteger("FeatureType", (int)fType);
+  }
+
+  private void Update()
+  {
+    if (GetComponent<Item>() == null)
+      Debug.Break();
   }
 
   private void FixedUpdate()
