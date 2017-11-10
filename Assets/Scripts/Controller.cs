@@ -2,53 +2,53 @@
 using System.Collections.Generic;
 using System.Threading;
 using UnityEngine;
+using UnityEngine.EventSystems;
 
 public class Controller : MonoBehaviour
 {
-  static GameObject clicked;
+  static Item clicked;
   public GameManager gameMgr;
   public static bool IsBombUsed = false;
   public static bool IsRecolorUsed = false;
 
   //move Controller to Panel from Item 
-  public void OnClick()
+  public void OnClick(BaseEventData data)
   {
+    var item = ((PointerEventData)data).pointerCurrentRaycast.gameObject.GetComponent<Item>();
     //TODO: do not forget to set timer is On Action for these two cases
     if (IsBombUsed == true)
     {
-      if (clicked != null)
-        clicked.GetComponent<Animator>().SetBool("Focused", false);
+      clicked?.Animator.SetBool("Focused", false);
       clicked = null;
-      gameObject.GetComponent<Feature>().SetFeatureType(FeatureType.Bomb);
-      var toRemove = new List<GameObject>();
-      toRemove.Add(gameObject);
+      item.Feature.SetFeatureType(FeatureType.Bomb);
+      var toRemove = new List<Item>();
+      toRemove.Add(item);
       gameMgr.StartCoroutine(gameMgr.ProcessBoard(toRemove));
       IsBombUsed = false;
       return;
     }
     if (IsRecolorUsed == true)
     {
-      if (clicked != null)
-        clicked.GetComponent<Animator>().SetBool("Focused", false);
+      clicked?.Animator.SetBool("Focused", false);
       clicked = null;
-      gameObject.GetComponent<Feature>().SetFeatureType(FeatureType.Recolor);
-      gameObject.GetComponent<Feature>().PerformFeature();
-      gameObject.GetComponent<Feature>().SetFeatureType(FeatureType.None);
+      item.Feature.SetFeatureType(FeatureType.Recolor);
+      item.Feature.PerformFeature();
+      item.Feature.SetFeatureType(FeatureType.None);
       gameMgr.StartCoroutine(gameMgr.GenerateCoroutine());
       IsRecolorUsed = false;
       return;
     }
     if (clicked == null)
     {
-      clicked = gameObject;
-      clicked.GetComponent<Animator>().SetBool("Focused", true);
+      clicked = item;
+      clicked.Animator.SetBool("Focused", true);
     }
     else
     {
-      clicked.GetComponent<Animator>().SetBool("Focused", false);
+      clicked.Animator.SetBool("Focused", false);
       //It was a very big mistake to start coroutine for object which was about to destroy
       //StartCoroutine(gameMgr.DoGameStep(clicked, gameObject));
-      gameMgr.StartCoroutine(gameMgr.DoGameStep(clicked, gameObject));
+      gameMgr.StartCoroutine(gameMgr.DoGameStep(clicked, item));
       clicked = null;
     }
   }

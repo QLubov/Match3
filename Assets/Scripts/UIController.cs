@@ -28,7 +28,7 @@ public class UIController : MonoBehaviour
     StartCoroutine(HighlightPair(pair));
   }
 
-  IEnumerator HighlightPair(List<GameObject> pair)
+  IEnumerator HighlightPair(List<Item> pair)
   {
     StartCoroutine(gameMgr.Move(pair[1], pair[0].transform.parent.position));
     yield return StartCoroutine(gameMgr.Move(pair[0], pair[1].transform.parent.position));

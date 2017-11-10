@@ -29,19 +29,19 @@ public class Feature : MonoBehaviour
     GetComponent<Animator>().SetInteger("FeatureType", (int)fType);
   }
 
-  public void OnDestroySelection()
+  private void FixedUpdate()
   {
-    GetComponent<Animator>().SetInteger("FeatureType", (int) fType);
+    if (gameObject.GetComponent<Animator>().GetInteger("FeatureType") != (int)fType)
+      SetFeatureType(fType);
   }
-
-  public List<GameObject> PerformFeature()
+  public List<Item> PerformFeature()
   {
-    var res = new List<GameObject>();
+    var res = new List<Item>();
     switch (fType)
     {
       case FeatureType.Bomb:
         {
-          res.AddRange(board.GetAround(GetComponent<BoardField>()));
+          res.AddRange(board.GetAround(GetComponent<Item>()));
           break;
         }
       case FeatureType.Lighting:
@@ -55,16 +55,10 @@ public class Feature : MonoBehaviour
         }
       case FeatureType.Recolor:
         {
-          board.RecolorElements(GetComponent<BoardField>());
+          board.RecolorElements(GetComponent<Item>());
           break;
         }
     }
     return res;
-  }
-
-  public void RemoveMe()
-  {
-    transform.SetParent(null);
-    Destroy(gameObject);
   }
 }

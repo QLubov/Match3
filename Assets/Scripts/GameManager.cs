@@ -7,24 +7,21 @@ using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
 {
-  public int Width = 8;
-  public int Height = 8;
   public Board board;
   public Timer timer;
   public float duration;
-
+  DateTime stamp;
   void Start()
   {
     StartCoroutine(GenerateCoroutine(true));
   }
 
   public IEnumerator GenerateCoroutine(bool resetTimer = false)
-  {
-    board.Generate(Width, Height);
+  {    
+    board.Generate();
     yield return StartCoroutine(MoveAllDown());
 
-    var toRemove = board.GetMatchThreeElements();
-
+    var toRemove = board.GetMatchThreeElements();    
     yield return StartCoroutine(ProcessBoard(toRemove));
 
     if (board.GetCombination().Count == 0)
@@ -39,11 +36,12 @@ public class GameManager : MonoBehaviour
     timer.onAction = false;
   }
 
-  public IEnumerator ProcessBoard(List<GameObject> toRemove)
+  public IEnumerator ProcessBoard(List<Item> toRemove)
   {
     while (toRemove.Count != 0)
     {      
       yield return StartCoroutine(RemoveElements(toRemove));
+      
       board.RemoveHoles();
       yield return StartCoroutine(MoveAllDown());
       toRemove = board.GetMatchThreeElements();
@@ -56,23 +54,26 @@ public class GameManager : MonoBehaviour
 
   IEnumerator MoveAllDown()
   {
+    stamp = DateTime.Now;
     List<Coroutine> cors = new List<Coroutine>();
-    for (int i = 0; i < Width; ++i)
+    for (int i = 0; i < board.Width; ++i)
     {
-      for (int j = 0; j < Height; ++j)
+      for (int j = 0; j < board.Height; ++j)
       {
-        var go = board.GetElement(i, j);
-        if (go != null)
+        var go = board.cells[i, j].Item;
+        if (go != null && (go.transform.position != go.transform.parent.position))
           cors.Add(StartCoroutine(Move(go, go.transform.parent.position)));
       }
     }
     foreach (var c in cors)
       yield return c;
+    var time = DateTime.Now - stamp;
+    Debug.Log(time);
   }
 
-  public IEnumerator Move(GameObject go, Vector3 target, float speed = 6.0f)
+  public IEnumerator Move(Item go, Vector3 target, float speed = 6.0f)
   {
-    go.GetComponent<LayoutElement>().ignoreLayout = true;
+    go.LayoutElement.ignoreLayout = true;
     var direction = (target - go.transform.position);
     while (direction.magnitude >= speed)
     {
@@ -83,10 +84,10 @@ public class GameManager : MonoBehaviour
       yield return new WaitForFixedUpdate();
     }
     go.transform.position = target;
-    go.GetComponent<LayoutElement>().ignoreLayout = false;
+    go.LayoutElement.ignoreLayout = false;
   }
 
-  public IEnumerator DoGameStep(GameObject first, GameObject second)
+  public IEnumerator DoGameStep(Item first, Item second)
   {
     //add if for moving availability (item is locked (frozen))
     if (!board.IsNeighbours(first, second))
@@ -117,10 +118,11 @@ public class GameManager : MonoBehaviour
         toRemove = board.GetMatchThreeElements();
       }
     }*/
+    
     StartCoroutine(GenerateCoroutine());
   }
 
-  IEnumerator Swap(GameObject first, GameObject second)
+  IEnumerator Swap(Item first, Item second)
   {
     StartCoroutine(Move(first, second.transform.parent.position, 4.0f));
     yield return StartCoroutine(Move(second, first.transform.parent.position, 4.0f));
@@ -128,14 +130,14 @@ public class GameManager : MonoBehaviour
     board.SwapElements(first, second);
   }
 
-  IEnumerator RemoveElements(List<GameObject> toRemove)
+  IEnumerator RemoveElements(List<Item> toRemove)
   {
     for (int i = 0; i < toRemove.Count; ++i)
     {
       var go = toRemove[i];
       if (go != null)
       {
-        toRemove.AddRange(go.GetComponent<Feature>().PerformFeature());
+        toRemove.AddRange(go.Feature.PerformFeature());
                 
         go.GetComponent<Animator>().SetBool("Destroyed", true);
       }

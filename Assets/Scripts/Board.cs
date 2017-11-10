@@ -3,52 +3,54 @@ using System;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.UI;
+using static System.Math;
 
 public class Board : MonoBehaviour
 {
-  public GameObject ReferenceItem;
-  public List<Color> colors = new List<Color>();
-  public int Width { get; private set; }
-  public int Height { get; private set; }
+  public int Width = 8;
+  public int Height = 8;
+  public Cell[,] cells { get; private set; }
 
-  public void Generate(int width, int height)
+  private void Awake()
   {
-    Width = width;
-    Height = height;
-
+    cells = new Cell[Width, Height];
     for (int i = 0; i < Width; ++i)
     {
       for (int j = 0; j < Height; ++j)
       {
-        if (GetCell(i, j).transform.childCount != 0)
-          continue;
-
-        var item = GameObject.Instantiate(ReferenceItem);
-        Image img = item.GetComponent<Image>();
-        item.SetActive(true);
-        BoardField e = img.GetComponent<BoardField>();
-        e.X = i;
-        e.Y = j;
-        e.ID = GetRandomColor();
-        img.color = colors[e.ID];
-
-        var cell = GetCell(i, j);
-        //calculate start position for new elements instead of "100"
-        item.transform.position = GetCell(0, j).transform.position + new Vector3(0, 100, 0);
-        item.transform.SetParent(cell.transform);
+        cells[i, j] = transform.GetChild(i * Width + j).GetComponent<Cell>();
       }
     }
   }
 
-  public GameObject GetElement(int i, int j)
+  public void Generate()
   {
-    var cell = GetCell(i, j);
-    if (cell == null)
-      return null;
-    if (cell.transform.childCount > 0)
-      return cell.transform.GetChild(0).gameObject;
-    return null;
+    for (int i = 0; i < Width; ++i)
+    {
+      for (int j = 0; j < Height; ++j)
+      {
+        if (!cells[i, j].IsEmpty)
+          continue;
+
+        var item = ItemFactory.Instance.Create(i, j);
+        //calculate start position for new elements instead of "100"
+        item.transform.position = cells[0, j].transform.position + new Vector3(0, 100, 0);
+        item.transform.SetParent(cells[i, j].transform);
+      }
+    }
   }
+
+  /*public Item GetElement(int i, int j)
+  {
+    return GetCell(i, j)?.Item;
+  }
+
+  Cell GetCell(int i, int j)
+  {
+    if (i < 0 || i >= Width || j < 0 || j >= Height)
+      return null;
+    return gameObject.transform.GetChild(i * Width + j).GetComponent<Cell>();
+  }*/
 
   public bool HasElementWithStatus(String name, bool val)
   {
@@ -56,10 +58,9 @@ public class Board : MonoBehaviour
     {
       for (int j = 0; j < Height; ++j)
       {
-        var ctrl = GetElement(i, j);
-        if (ctrl == null)
+        if (cells[i, j].IsEmpty)
           continue;
-        if (ctrl.GetComponent<Animator>().GetBool(name) == val)
+        if (cells[i, j].Item.Animator.GetBool(name) == val)
         {
           return true;
         }
@@ -74,8 +75,7 @@ public class Board : MonoBehaviour
     {
       for (int j = 0; j < Height; ++j)
       {
-        var cell = GetCell(i, j);
-        if (cell.transform.childCount == 0)
+        if (cells[i, j].IsEmpty)
           return true;
       }
     }
@@ -87,26 +87,25 @@ public class Board : MonoBehaviour
     return GetMatchThreeElements().Count != 0;
   }
 
-  public List<GameObject> GetMatchThreeElements()
+  public List<Item> GetMatchThreeElements()
   {
-    var res = new List<GameObject>();
+    var res = new List<Item>();
 
     for (int i = 0; i < Width; ++i)
     {
       for (int j = 0; j < Height; ++j)
       {
-        var go = GetElement(i, j);
-        if (go == null)
+        if (cells[i, j].IsEmpty)
           continue;
-        if (res.Contains(go))
+        if (res.Contains(cells[i, j].Item))
           continue;
-        res.AddRange(GetMatchThreeElements(go));
+        res.AddRange(GetMatchThreeElements(cells[i, j].Item));
       }
     }
     return res;
   }
 
-  public void SwapElements(GameObject first, GameObject second)
+  public void SwapElements(Item first, Item second)
   {
     Transform temp = first.transform.parent;
     first.transform.SetParent(second.transform.parent);
@@ -114,87 +113,10 @@ public class Board : MonoBehaviour
     SwapIndexes(first, second);
   }
 
-  public List<GameObject> GetMatchThreeElements(GameObject element)
+  void SwapIndexes(Item element, Item other)
   {
-    var ge = element.GetComponent<BoardField>();
-    var result = new List<GameObject>();
-    result.AddRange(GetElementsFromLine(ge));
-    result.AddRange(GetElemenetsFromColumn(ge));
-
-    if (result.Count != 0)
-      result.Add(element);
-
-    return result;
-  }
-
-  List<GameObject> GetElementsFromLine(BoardField ge)
-  {
-    var result = new List<GameObject>();
-
-    for (int i = ge.X - 1; i >= 0; --i)
-    {
-      var go = GetElement(i, ge.Y);
-      if (!IsSameElements(go, ge))
-        break;
-      result.Add(go);
-    }
-    for (int i = ge.X + 1; i < Width; ++i)
-    {
-      var go = GetElement(i, ge.Y);
-      if (!IsSameElements(go, ge))
-        break;
-      result.Add(go);
-    }
-    if (result.Count < 2)
-      return new List<GameObject>();
-    return result;
-  }
-
-  List<GameObject> GetElemenetsFromColumn(BoardField ge)
-  {
-    var result = new List<GameObject>();
-
-    for (int i = ge.Y + 1; i < Height; ++i)
-    {
-      var go = GetElement(ge.X, i);
-      if (!IsSameElements(go, ge))
-        break;
-      result.Add(go);
-    }
-    for (int i = ge.Y - 1; i >= 0; --i)
-    {
-      var go = GetElement(ge.X, i);
-      if (!IsSameElements(go, ge))
-        break;
-      result.Add(go);
-    }
-    if (result.Count < 2)
-      return new List<GameObject>();
-    return result;
-  }
-
-  bool IsSameElements(GameObject go, BoardField ge)
-  {
-    if (go == null)
-      return false;
-    if (go.GetComponent<BoardField>().ID != ge.ID)
-    {
-      return false;
-    }
-    return true;
-  }
-
-  GameObject GetCell(int i, int j)
-  {
-    if (i < 0 || i >= Width || j < 0 || j >= Height)
-      return null;
-    return gameObject.transform.GetChild(i * Width + j).gameObject.transform.gameObject;
-  }
-
-  void SwapIndexes(GameObject element, GameObject other)
-  {
-    var e1 = element.GetComponent<BoardField>();
-    var e2 = other.GetComponent<BoardField>();
+    var e1 = element.GetComponent<Item>();
+    var e2 = other.GetComponent<Item>();
     int tX = e1.X;
     int tY = e1.Y;
 
@@ -204,12 +126,81 @@ public class Board : MonoBehaviour
     e2.Y = tY;
   }
 
-  List<GameObject> GetAbove(int row, int col)
+  public List<Item> GetMatchThreeElements(Item item)
   {
-    var result = new List<GameObject>();
+    var result = new List<Item>();
+    result.AddRange(GetElementsFromLine(item));
+    result.AddRange(GetElemenetsFromColumn(item));
+
+    if (result.Count != 0)
+      result.Add(item);
+
+    return result;
+  }
+
+  List<Item> GetElementsFromLine(Item ge)
+  {
+    var result = new List<Item>();
+
+    for (int i = ge.X - 1; i >= 0; --i)
+    {
+      var go = cells[i, ge.Y].Item;
+      if (!IsSameElements(go, ge))
+        break;
+      result.Add(go);
+    }
+    for (int i = ge.X + 1; i < Width; ++i)
+    {
+      var go = cells[i, ge.Y].Item;
+      if (!IsSameElements(go, ge))
+        break;
+      result.Add(go);
+    }
+    if (result.Count < 2)
+      return new List<Item>();
+    return result;
+  }
+
+  List<Item> GetElemenetsFromColumn(Item ge)
+  {
+    var result = new List<Item>();
+
+    for (int i = ge.Y + 1; i < Height; ++i)
+    {
+      var go = cells[ge.X, i].Item;
+      if (!IsSameElements(go, ge))
+        break;
+      result.Add(go);
+    }
+    for (int i = ge.Y - 1; i >= 0; --i)
+    {
+      var go = cells[ge.X, i].Item;
+      if (!IsSameElements(go, ge))
+        break;
+      result.Add(go);
+    }
+    if (result.Count < 2)
+      return new List<Item>();
+    return result;
+  }
+
+  bool IsSameElements(Item go, Item ge)
+  {
+    if (go == null)
+      return false;
+    if (go.ID != ge.ID)
+    {
+      return false;
+    }
+    return true;
+  }
+
+  List<Item> GetAbove(int row, int col)
+  {
+    var result = new List<Item>();
     for (int i = row; i >= 0; --i)
     {
-      var go = GetElement(i, col);
+      var go = cells[i, col].Item;
       if (go != null)
         result.Add(go);
     }
@@ -222,8 +213,7 @@ public class Board : MonoBehaviour
     {
       for (int i = Height - 1; i >= 0; --i)
       {
-        var go = GetElement(i, j);
-        if (go == null)
+        if (cells[i, j].IsEmpty)
         {
           var objects = GetAbove(i, j);
           if (objects.Count == 0)
@@ -232,8 +222,8 @@ public class Board : MonoBehaviour
           foreach (var obj in objects)
           {
             obj.GetComponent<LayoutElement>().ignoreLayout = true;
-            obj.transform.SetParent(GetCell(k, j).transform);
-            var ge = obj.GetComponent<BoardField>();
+            obj.transform.SetParent(cells[k, j].transform);
+            var ge = obj.GetComponent<Item>();
             ge.X = k;
             ge.Y = j;
             k--;
@@ -244,20 +234,12 @@ public class Board : MonoBehaviour
     }
   }
 
-  public bool IsNeighbours(GameObject first, GameObject second)
+  public bool IsNeighbours(Item first, Item second)
   {
-    var e1 = first.GetComponent<BoardField>();
-    var e2 = second.GetComponent<BoardField>();
-
-    return (Math.Abs(e1.X - e2.X) < 2 && (e1.Y == e2.Y)) || (Math.Abs(e1.Y - e2.Y) < 2 && (e1.X == e2.X));
+    return Abs(first.X - second.X) < 2 && (first.Y == second.Y) || Abs(first.Y - second.Y) < 2 && (first.X == second.X);
   }
 
-  int GetRandomColor()
-  {
-    return UnityEngine.Random.Range(0, colors.Count);
-  }
-
-  bool CheckStep(GameObject first, GameObject second)
+  bool CheckStep(Item first, Item second)
   {
     SwapElements(first, second);
     var list = GetMatchThreeElements(first);
@@ -270,23 +252,23 @@ public class Board : MonoBehaviour
     return false;
   }
 
-  public List<GameObject> GetCombination()
+  public List<Item> GetCombination()
   {
-    var res = new List<GameObject>();
+    var res = new List<Item>();
     for (int i = 0; i < Width - 1; ++i)
     {
       for (int j = 0; j < Height - 1; ++j)
       {
-        if (CheckStep(GetElement(i, j), GetElement(i + 1, j)))
+        if (CheckStep(cells[i, j].Item, cells[i + 1, j].Item))
         {
-          res.Add(GetElement(i, j));
-          res.Add(GetElement(i + 1, j));
+          res.Add(cells[i, j].Item);
+          res.Add(cells[i + 1, j].Item);
           return res;
         }
-        if (CheckStep(GetElement(i, j), GetElement(i, j + 1)))
+        if (CheckStep(cells[i, j].Item, cells[i, j + 1].Item))
         {
-          res.Add(GetElement(i, j));
-          res.Add(GetElement(i, j + 1));
+          res.Add(cells[i, j].Item);
+          res.Add(cells[i, j + 1].Item);
           return res;
         }
       }
@@ -300,41 +282,42 @@ public class Board : MonoBehaviour
     {
       for (int j = 0; j < Height; ++j)
       {
-        var go = GetElement(i, j);
-        if (go != null)
-          Destroy(go);
+        if (!cells[i, j].IsEmpty)
+          Destroy(cells[i, j].Item);
       }
     }
   }
 
-  public List<GameObject> GetAround(BoardField bf, int count = 8)
-  {    
-    var res = new List<GameObject>();
+  public List<Item> GetAround(Item bf, int count = 8)
+  {
+    var res = new List<Item>();
     for (int i = bf.X - 1; i <= bf.X + 1; ++i)
     {
       for (int j = bf.Y - 1; j <= bf.Y + 1; ++j)
       {
         if (i == bf.X && j == bf.Y)
           continue;
-        var go = GetElement(i, j);
-        if (go != null && go.GetComponent<Animator>().GetBool("Destroyed") == false)
+        if (i < 0 || i >= Width || j < 0 || j >= Height)
+          continue;
+        var go = cells[i, j].Item;
+        if (go != null && go.Animator.GetBool("Destroyed") == false)
           res.Add(go);
       }
     }
     return res;
   }
 
-  public List<GameObject> GetRandomElements(int count = 8)
+  public List<Item> GetRandomElements(int count = 8)
   {
-    var res = new List<GameObject>();
+    var res = new List<Item>();
     for (int i = 0; i < count;)
     {
       var x = UnityEngine.Random.Range(0, Width);
       var y = UnityEngine.Random.Range(0, Height);
-      var element = GetElement(x, y);
+      var element = cells[x, y].Item;
       if (res.Contains(element) || element == null)
         continue;
-      if (!element.GetComponent<Animator>().GetBool("Destroyed"))
+      if (!element.Animator.GetBool("Destroyed"))
         res.Add(element);
       ++i;
     }
@@ -342,16 +325,13 @@ public class Board : MonoBehaviour
     return res;
   }
 
-  public void RecolorElements(BoardField bf)
+  public void RecolorElements(Item item)
   {
     var list = GetRandomElements(7);
-    list.Add(bf.gameObject);
-
-    foreach (var go in list)
+    list.Add(item);
+    foreach (var it in list)
     {
-      var id = GetRandomColor();
-      go.GetComponent<BoardField>().ID = id;
-      go.GetComponent<Image>().color = colors[id];
+      it.Recolor();
     }
   }
 }
