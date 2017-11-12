@@ -6,19 +6,20 @@ using UnityEngine.UI;
 public class UIController : MonoBehaviour
 {
   public GameManager gameMgr;
-  public Text timerText;
+  public Text TimerText;
+  public Text ScoreText;
+  public Image FinishWindow;
 
   void Start()
   {
-    gameMgr.timer.OnGameEnded += OnGameEnded;
+    gameMgr.timer.OnTimerExpired += OnTimerExpired;
+    Controller.OnGameEnded += OnGameEnded;
   }
 
   void Update()
   {
-    if (gameMgr.timer.IsStarted == false)
-      timerText.text = "" + gameMgr.duration;
-    else
-      timerText.text = "" + gameMgr.timer.Remains.Seconds;
+    TimerText.text = $"{gameMgr.timer.Remains.Minutes} : {gameMgr.timer.Remains.Seconds}";
+    ScoreText.text = "" + gameMgr.bCounter.counter.Score;
   }
 
   //Help button
@@ -52,9 +53,18 @@ public class UIController : MonoBehaviour
     gameMgr.StartCoroutine(gameMgr.ProcessGame());
   }
 
+  void OnTimerExpired()
+  {
+    Debug.Log("UIController is ended!");
+    //Deactivate UI
+  }
+
   void OnGameEnded()
   {
-    Debug.Log("Game is ended!");
+    //show message box
+    Text score = FinishWindow.transform.Find("Score").GetComponent<Text>();
+    score.text = "" + gameMgr.bCounter.counter.Score;
+    FinishWindow.gameObject.SetActive(true);
   }
 
 }

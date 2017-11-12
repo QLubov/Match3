@@ -2,40 +2,38 @@
 using System.Collections;
 using UnityEngine;
 
-//the same as counter
+//TODO:the same as counter or not
 public class Timer : MonoBehaviour
 {
   DateTime startTime;
-  public Action OnGameEnded { get; set; }
-  public bool onAction { get; set; }
+  public Action OnTimerExpired { get; set; }
   public TimeSpan Remains { get; private set; }
-  public bool IsStarted { get; private set; }
+  //TODO: print this field in GameMgr editor config
+  public float duration;
 
   void Start()
   {
-    IsStarted = false;
+    Remains = TimeSpan.FromSeconds(duration);
   }
 
-  public void StartTimer(TimeSpan duration)
+  public void StartTimer()
   {
-    Remains = duration;
-    IsStarted = true;
     startTime = DateTime.Now;
-    StartCoroutine(StartTimerCoroutine(duration));
+    StartCoroutine(StartTimerCoroutine());
   }
 
-  IEnumerator StartTimerCoroutine(TimeSpan duration)
+  public void AddTime(float addition)
   {
-    while (DateTime.Now - startTime < duration)
-    {
-      Remains = duration - (DateTime.Now - startTime);
-      yield return new WaitForEndOfFrame();
-    }
-    while (onAction == true)
-      yield return new WaitForEndOfFrame();
-    IsStarted = false;
-    OnGameEnded();
+    Remains += TimeSpan.FromSeconds(addition);
   }
 
-
+  IEnumerator StartTimerCoroutine()
+  {
+    while (Remains > TimeSpan.Zero)
+    {
+      Remains -= TimeSpan.FromSeconds(Time.deltaTime);
+      yield return new WaitForFixedUpdate();
+    }
+    OnTimerExpired();
+  }
 }

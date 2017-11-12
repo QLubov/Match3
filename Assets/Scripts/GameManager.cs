@@ -8,12 +8,11 @@ public class GameManager : MonoBehaviour
 {
   public Board board;
   public Timer timer;
-  public float duration;
+  public BonusCounter bCounter;
   [Range(0.1f, 20.0f)]
   public float SwapSpeed = 4.0f;
   [Range(0.1f, 50.0f)]
   public float MoveSpeed = 6.0f;
-  DateTime stamp;
 
   void Start()
   {
@@ -35,9 +34,8 @@ public class GameManager : MonoBehaviour
     }
     if (resetTimer == true)
     {
-      timer.StartTimer(TimeSpan.FromSeconds(duration));
+      timer.StartTimer();
     }
-    timer.onAction = false;
   }
 
   public IEnumerator ProcessBoard(List<Item> toRemove)
@@ -58,7 +56,6 @@ public class GameManager : MonoBehaviour
 
   IEnumerator MoveAllDown()
   {
-    stamp = DateTime.Now;
     List<Coroutine> cors = new List<Coroutine>();
     for (int i = 0; i < board.Width; ++i)
     {
@@ -71,8 +68,6 @@ public class GameManager : MonoBehaviour
     }
     foreach (var c in cors)
       yield return c;
-    var time = DateTime.Now - stamp;
-    Debug.Log(time);
   }
 
   public IEnumerator Move(Item go, Vector3 target, float speed)
@@ -101,8 +96,6 @@ public class GameManager : MonoBehaviour
       yield break;
     }
 
-    timer.onAction = true;
-
     yield return StartCoroutine(Swap(first, second));
     var toRemove = board.GetMatchThreeElements(first);
 
@@ -112,8 +105,8 @@ public class GameManager : MonoBehaviour
       yield return StartCoroutine(Swap(first, second));
       yield break;
     }
-
-    StartCoroutine(ProcessBoard(toRemove));
+    bCounter.SetUserInput(toRemove);
+    yield return StartCoroutine(ProcessBoard(toRemove));
   }
 
   IEnumerator Swap(Item first, Item second)
@@ -135,9 +128,9 @@ public class GameManager : MonoBehaviour
 
         item.Animator.SetBool("Destroyed", true);
       }
-    }
-
+    }    
     yield return new WaitWhile(() => { return board.HasElementWithStatus("Destroyed", true); });
+    bCounter.CalculateScore(toRemove);
   }
 
   void OnApplicationQuit()
